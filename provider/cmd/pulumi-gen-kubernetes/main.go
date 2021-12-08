@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	dotnetgen "github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
+	jvmcodegen "github.com/pulumi/pulumi/pkg/v3/codegen/jvm"
 	nodejsgen "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	pythongen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -63,6 +64,7 @@ const (
 	DotNet Language = "dotnet"
 	Go     Language = "go"
 	NodeJS Language = "nodejs"
+	JVM    Language = "jvm"
 	Kinds  Language = "kinds"
 	Python Language = "python"
 	Schema Language = "schema"
@@ -99,6 +101,9 @@ func main() {
 	case Python:
 		templateDir := filepath.Join(TemplateDir, "python-templates")
 		writePythonClient(readSchema(inputFile, version), outdir, templateDir)
+	case JVM:
+		templateDir := filepath.Join(TemplateDir, "jvm-templates")
+		writeJVMClient(readSchema(inputFile, version), outdir, templateDir)
 	case DotNet:
 		templateDir := filepath.Join(TemplateDir, "dotnet-templates")
 		writeDotnetClient(readSchema(inputFile, version), outdir, templateDir)
@@ -241,6 +246,37 @@ func writePythonClient(pkg *schema.Package, outdir string, templateDir string) {
 	}
 
 	files, err := pythongen.GeneratePackage("pulumigen", pkg, overlays)
+	if err != nil {
+		panic(err)
+	}
+
+	mustWriteFiles(outdir, files)
+}
+
+func writeJVMClient(pkg *schema.Package, outdir, templateDir string) {
+	resources, err := jvmcodegen.LanguageResources("pulumigen", pkg)
+	if err != nil {
+		panic(err)
+	}
+
+	templateResources := gen.TemplateResources{}
+	for _, resource := range resources {
+		r := gen.TemplateResource{
+			Name:    resource.Name,
+			Package: resource.Package,
+			Token:   resource.Token,
+		}
+		templateResources.Resources = append(templateResources.Resources, r)
+	}
+	sort.Slice(templateResources.Resources, func(i, j int) bool {
+		return templateResources.Resources[i].Token < templateResources.Resources[j].Token
+	})
+	// TODO: add missing overlays
+	overlays := map[string][]byte{
+		"src/main/java/io/pulumi/kubernetes/KubernetesResource.java": mustLoadFile(filepath.Join(templateDir, "KubernetesResource.java")),
+		"src/main/java/io/pulumi/kubernetes/yaml/Yaml.java":          mustRenderTemplate(filepath.Join(templateDir, "yaml", "Yaml.tmpl"), templateResources),
+	}
+	files, err := jvmcodegen.GeneratePackage("pulumigen", pkg, overlays)
 	if err != nil {
 		panic(err)
 	}

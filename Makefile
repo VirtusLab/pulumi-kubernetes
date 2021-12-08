@@ -55,11 +55,18 @@ dotnet_sdk::
 	$(WORKING_DIR)/bin/$(CODEGEN) -version=${DOTNET_VERSION} dotnet $(SCHEMA_FILE) $(CURDIR)
 	rm -rf sdk/dotnet/bin/Debug
 	cd ${PACKDIR}/dotnet/&& \
-		echo "${DOTNET_VERSION}" >version.txt && \
+		echo "${DOTNET_VERSION}" > version.txt && \
 		dotnet build /p:Version=${DOTNET_VERSION}
 
 go_sdk::
 	$(WORKING_DIR)/bin/$(CODEGEN) -version=${VERSION} go $(SCHEMA_FILE) $(CURDIR)
+
+jvm_sdk::
+	$(WORKING_DIR)/bin/$(CODEGEN) -version=${VERSION} jvm $(SCHEMA_FILE) $(CURDIR)
+	cd $(WORKING_DIR)/sdk/jvm && \
+		mkdir -p src/main/resources/io/pulumi/$(PACK) && \
+		echo "${VERSION}" > src/main/resources/io/pulumi/$(PACK)/version.txt && \
+		gradle -Pversion=${VERSION} build
 
 nodejs_sdk:: VERSION := $(shell pulumictl get version --language javascript)
 nodejs_sdk::
@@ -94,8 +101,20 @@ lint::
 		pushd $$DIR && golangci-lint run -c ../.golangci.yml --timeout 10m && popd ; \
 	done
 
-install:: install_nodejs_sdk install_dotnet_sdk
+install:: install_nodejs_sdk install_dotnet_sdk install_jvm_sdk
 	cp $(WORKING_DIR)/bin/${PROVIDER} ${GOPATH}/bin
+
+manual_provider_install::
+	pulumi plugin install resource $(PACK) v$(VERSION) --server "$(PROJECT)/releases/download"
+
+install_local::
+	mkdir -p $(HOME)/.pulumi/plugins/resource-$(PACK)-v$(VERSION)
+	touch $(HOME)/.pulumi/plugins/resource-$(PACK)-v$(VERSION).lock
+	cp -v $(WORKING_DIR)/bin/pulumi-resource-$(PACK) $(HOME)/.pulumi/plugins/resource-$(PACK)-v$(VERSION)/${PROVIDER}
+	pulumi plugin ls | grep $(PACK)
+
+cleanup_local::
+	pulumi plugin rm resource $(PACK) $(VERSION) --yes
 
 GO_TEST_FAST := go test -short -v -count=1 -cover -timeout 2h -parallel ${TESTPARALLELISM}
 GO_TEST 	 := go test -v -count=1 -cover -timeout 2h -parallel ${TESTPARALLELISM}
@@ -106,6 +125,7 @@ test_fast::
 	cd provider/pkg && $(GO_TEST_FAST) ./...
 	cd tests/sdk/nodejs && $(GO_TEST_FAST) ./...
 	cd tests/sdk/python && $(GO_TEST_FAST) ./...
+	#cd tests/sdk/jvm && $(GO_TEST_FAST) ./...
 	cd tests/sdk/dotnet && $(GO_TEST_FAST) ./...
 	cd tests/sdk/go && $(GO_TEST_FAST) ./...
 
@@ -113,6 +133,7 @@ test_all::
 	cd provider/pkg && $(GO_TEST) ./...
 	cd tests/sdk/nodejs && $(GO_TEST) ./...
 	cd tests/sdk/python && $(GO_TEST) ./...
+	#cd tests/sdk/jvm && $(GO_TEST) ./...
 	cd tests/sdk/dotnet && $(GO_TEST) ./...
 	cd tests/sdk/go && $(GO_TEST) ./...
 
@@ -132,3 +153,10 @@ install_go_sdk::
 install_nodejs_sdk::
 	-yarn unlink --cwd $(WORKING_DIR)/sdk/nodejs/bin
 	yarn link --cwd $(WORKING_DIR)/sdk/nodejs/bin
+
+install_jvm_sdk::
+	cd $(WORKING_DIR)/sdk/jvm && gradle -Pversion=${VERSION} publishToMavenLocal
+
+hack_local_deps::
+	cd provider && go mod edit -replace github.com/pulumi/pulumi/pkg/v3=${HOME}/repos/vl/pulumi/pkg
+	cd provider && go mod edit -replace github.com/pulumi/pulumi/sdk/v3=${HOME}/repos/vl/pulumi/sdk

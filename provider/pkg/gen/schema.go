@@ -86,7 +86,7 @@ func PulumiSchema(swagger map[string]interface{}) pschema.PackageSpec {
 						},
 					},
 					Description: "The contents of a kubeconfig file or the path to a kubeconfig file.",
-					TypeSpec: pschema.TypeSpec{Type: "string"},
+					TypeSpec:    pschema.TypeSpec{Type: "string"},
 					Language: map[string]json.RawMessage{
 						"csharp": rawMessage(map[string]interface{}{
 							"name": "KubeConfig",
@@ -139,6 +139,7 @@ func PulumiSchema(swagger map[string]interface{}) pschema.PackageSpec {
 	goImportPath := "github.com/pulumi/pulumi-kubernetes/sdk/v3/go/kubernetes"
 
 	csharpNamespaces := map[string]string{}
+	jvmPackages := map[string]string{}
 	modToPkg := map[string]string{}
 	pkgImportAliases := map[string]string{}
 
@@ -154,6 +155,7 @@ func PulumiSchema(swagger map[string]interface{}) pschema.PackageSpec {
 				tok := fmt.Sprintf(`kubernetes:%s:%s`, kind.apiVersion, kind.kind)
 
 				csharpNamespaces[kind.apiVersion] = fmt.Sprintf("%s.%s", pascalCase(group.Group()), pascalCase(version.Version()))
+				jvmPackages[kind.apiVersion] = fmt.Sprintf("%s.%s", group.Group(), version.Version())
 				modToPkg[kind.apiVersion] = kind.schemaPkgName
 				pkgImportAliases[fmt.Sprintf("%s/%s", goImportPath, kind.schemaPkgName)] = strings.Replace(
 					kind.schemaPkgName, "/", "", -1)
@@ -250,8 +252,8 @@ func PulumiSchema(swagger map[string]interface{}) pschema.PackageSpec {
 
 	pkg.Language["csharp"] = rawMessage(map[string]interface{}{
 		"packageReferences": map[string]string{
-			"Glob":                         "1.1.5",
-			"Pulumi":                       "3.*",
+			"Glob":   "1.1.5",
+			"Pulumi": "3.*",
 		},
 		"namespaces":             csharpNamespaces,
 		"compatibility":          kubernetes20,
@@ -262,6 +264,11 @@ func PulumiSchema(swagger map[string]interface{}) pschema.PackageSpec {
 		"moduleToPackage":                modToPkg,
 		"packageImportAliases":           pkgImportAliases,
 		"generateResourceContainerTypes": true,
+	})
+	pkg.Language["jvm"] = rawMessage(map[string]interface{}{
+		// TODO: add deps
+		"packages":      jvmPackages,
+		"compatibility": kubernetes20,
 	})
 	pkg.Language["nodejs"] = rawMessage(map[string]interface{}{
 		"compatibility": kubernetes20,

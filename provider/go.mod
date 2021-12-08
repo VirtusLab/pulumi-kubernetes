@@ -30,4 +30,6 @@ replace (
 	github.com/docker/distribution => github.com/docker/distribution v0.0.0-20191216044856-a8371794149d
 	github.com/docker/docker => github.com/moby/moby v17.12.0-ce-rc1.0.20200618181300-9dc6525e6118+incompatible
 	github.com/evanphx/json-patch => github.com/evanphx/json-patch v4.9.0+incompatible
+	github.com/pulumi/pulumi/pkg/v3 => /Users/pprazak/repos/vl/pulumi/pkg
+	github.com/pulumi/pulumi/sdk/v3 => /Users/pprazak/repos/vl/pulumi/sdk
 )
