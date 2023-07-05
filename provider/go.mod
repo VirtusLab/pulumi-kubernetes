@@ -12,10 +12,10 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/pulumi/pulumi/pkg/v3 v3.19.0
 	github.com/pulumi/pulumi/sdk/v3 v3.19.0
-	github.com/stretchr/testify v1.7.0
-	golang.org/x/crypto v0.0.0-20210513164829-c07d793c2f9a
-	google.golang.org/grpc v1.38.0
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
+	github.com/stretchr/testify v1.8.1
+	golang.org/x/crypto v0.0.0-20211108221036-ceb1ce70b4fa
+	google.golang.org/grpc v1.53.0
+	gopkg.in/yaml.v3 v3.0.1
 	helm.sh/helm/v3 v3.7.1
 	k8s.io/api v0.22.1
 	k8s.io/apimachinery v0.22.1
